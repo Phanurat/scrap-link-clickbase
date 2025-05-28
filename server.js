@@ -7,7 +7,7 @@ const PORT = 3000;
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-  res.send(`
+    res.send(`
     <!DOCTYPE html>
     <html>
       <head>
@@ -43,8 +43,8 @@ app.get('/', (req, res) => {
         </section>
 
         <section>
-          <h2>ฟีเจอร์ 2: ดึงลิงก์จากโพสต์ พร้อมกรอง hashtag)</h2>
-          <h3>ถ้าไม่มีลิ้งบน โพสต์จะหาลิ้งใต้คอมเม้น</h3>
+          <h2>ฟีเจอร์ 2: ดึงลิงก์จากโพสต์ พร้อมกรอง hashtag</h2>
+          <h3>ถ้าไม่มีลิงก์บนโพสต์ จะหาลิงก์ใต้คอมเมนต์</h3>
           <input id="urlInput2" type="text" size="80" value="" />
           <button onclick="extractPostLinks()">ดึงลิงก์โพสต์</button>
           <div id="output2"></div>
@@ -126,105 +126,111 @@ app.get('/', (req, res) => {
   `);
 });
 
-// API 1: ดึงลิงก์จาก a[attributionsrc] ที่เป็น l.facebook.com/l.php
 app.get('/extract', async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.status(400).json({ error: 'กรุณาระบุ url' });
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ error: 'กรุณาระบุ url' });
 
-  try {
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2' });
-
-    // รอ selector แต่ถ้า timeout ก็ผ่านไป
     try {
-      await page.waitForSelector('a[attributionsrc]', { timeout: 5000 });
-    } catch {}
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: 'networkidle2' });
 
-    const links = await page.evaluate(() => {
-      const anchors = Array.from(document.querySelectorAll('a[attributionsrc]'));
-      const seen = new Set();
-      const uniqueLinks = [];
+        try {
+            await page.waitForSelector('a[attributionsrc]', { timeout: 5000 });
+        } catch { }
 
-      for (const a of anchors) {
-        const href = a.href;
+        const links = await page.evaluate(() => {
+            const anchors = Array.from(document.querySelectorAll('a[attributionsrc]'));
+            const seen = new Set();
+            const uniqueLinks = [];
 
-        if (!href.startsWith('https://l.facebook.com/l.php')) continue;
+            for (const a of anchors) {
+                const href = a.href;
 
-        const baseHref = href.split('?')[0];
+                if (!href.startsWith('https://l.facebook.com/l.php')) continue;
 
-        if (!seen.has(baseHref)) {
-          seen.add(baseHref);
-          uniqueLinks.push({
-            href,
-            attributionsrc: a.getAttribute('attributionsrc'),
-          });
-        }
-      }
-      return uniqueLinks;
-    });
+                try {
+                    const urlObj = new URL(href);
+                    const realUrlEncoded = urlObj.searchParams.get('u');
+                    if (!realUrlEncoded) continue;
 
-    await browser.close();
+                    const realUrl = decodeURIComponent(realUrlEncoded);
+                    const baseHref = realUrl.split('?')[0];
 
-    res.json({ links });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+                    if (!seen.has(baseHref)) {
+                        seen.add(baseHref);
+                        uniqueLinks.push({
+                            href: realUrl,
+                            attributionsrc: a.getAttribute('attributionsrc'),
+                        });
+                    }
+                } catch {
+                    continue;
+                }
+            }
+            return uniqueLinks;
+        });
+
+        await browser.close();
+        res.json({ links });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// API 2: ดึงลิงก์จากโพสต์ div[dir="auto"], กรอง hashtag และไม่ซ้ำ
 app.get('/extract-post-links', async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.status(400).json({ error: 'กรุณาระบุ url' });
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ error: 'กรุณาระบุ url' });
 
-  try {
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2' });
-
-    // รอโพสต์โหลด (ไม่จำเป็นต้องจับ error)
     try {
-      await page.waitForSelector('div[dir="auto"]', { timeout: 5000 });
-    } catch {}
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: 'networkidle2' });
 
-    const links = await page.evaluate(() => {
-      const allPosts = Array.from(document.querySelectorAll('div[dir="auto"]'));
-      const results = [];
-      const seen = new Set();
+        try {
+            await page.waitForSelector('div[dir="auto"]', { timeout: 5000 });
+        } catch {}
 
-      for (const post of allPosts) {
-        const text = post.innerText?.trim();
-        const linkEl = post.querySelector('a[href^="https://"]');
-        const href = linkEl?.href;
+        const links = await page.evaluate(() => {
+            const elements = Array.from(document.querySelectorAll('div[dir="auto"]'));
+            const results = [];
+            const seen = new Set();
 
-        if (text && href) {
-          try {
-            const urlObj = new URL(href);
-            if (urlObj.hostname === 'www.facebook.com' && urlObj.pathname.startsWith('/hashtag/')) {
-              continue; // ข้ามลิงก์ hashtag
+            for (const el of elements) {
+                const content = el.innerText?.trim();
+                const anchors = Array.from(el.querySelectorAll('a[href^="https://l.facebook.com/l.php"]'));
+
+                for (const a of anchors) {
+                    const href = a.href;
+                    try {
+                        const urlObj = new URL(href);
+                        const realUrlEncoded = urlObj.searchParams.get('u');
+                        if (!realUrlEncoded) continue;
+
+                        const realUrl = decodeURIComponent(realUrlEncoded);
+                        const baseHref = realUrl.split('?')[0];
+
+                        if (!seen.has(baseHref)) {
+                            seen.add(baseHref);
+                            results.push({
+                                href: realUrl,
+                                content: content
+                            });
+                        }
+                    } catch {}
+                }
             }
 
-            const baseHref = href.split('?')[0];
-            if (!seen.has(baseHref)) {
-              seen.add(baseHref);
-              results.push({ text, href });
-            }
-          } catch {}
-        }
-      }
+            return results;
+        });
 
-      return results;
-    });
-
-    await browser.close();
-
-    res.json({ links });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        await browser.close();
+        res.json({ links });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
-
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
