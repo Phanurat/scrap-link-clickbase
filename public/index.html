@@ -1,115 +1,193 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <title>Facebook Link Extractor</title>
     <style>
-      body {
-        font-family: sans-serif;
-        padding: 20px;
-      }
-      input.link-box {
-        width: 80%;
-        margin: 5px 0;
-        padding: 5px;
-      }
-      button.copy-btn {
-        margin-left: 5px;
-        cursor: pointer;
-      }
-      section {
-        margin-bottom: 40px;
-      }
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        input.link-box {
+            width: 80%;
+            margin: 5px 0;
+            padding: 5px;
+        }
+
+        button.copy-btn {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+
+        section {
+            margin-bottom: 40px;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <h1>Facebook Link Extractor</h1>
 
+    <!-- ฟีเจอร์ 1 -->
     <section>
-      <h2>ฟีเจอร์ 1: ดึงลิงก์จาก Clickbase</h2>
-      <input id="urlInput1" type="text" size="80" value="" />
-      <button onclick="extractAttribLinks()">ดึงลิงก์ attributionsrc</button>
-      <div id="output1"></div>
+        <h2>ฟีเจอร์ 1: ดึงลิงก์จาก Clickbase</h2>
+        <input id="urlInput1" type="text" size="80" value="" />
+        <button onclick="extractAttribLinks()">ดึงลิงก์ attributionsrc</button>
+        <div id="output1"></div>
+        <div id="content"></div>
     </section>
 
+    <!-- ฟีเจอร์ 2 -->
     <section>
-      <h2>ฟีเจอร์ 2: ดึงลิงก์จากโพสต์ พร้อมกรอง hashtag</h2>
-      <h3>ถ้าไม่มีลิงก์บนโพสต์ จะหาลิงก์ใต้คอมเมนต์</h3>
-      <input id="urlInput2" type="text" size="80" value="" />
-      <button onclick="extractPostLinks()">ดึงลิงก์โพสต์</button>
-      <div id="output2"></div>
+        <h2>ฟีเจอร์ 2: ดึงลิงก์จากโพสต์ พร้อมกรอง hashtag</h2>
+        <h3>ถ้าไม่มีลิงก์บนโพสต์ จะหาลิงก์ใต้คอมเมนต์</h3>
+        <input id="urlInput2" type="text" size="80" value="" />
+        <button onclick="extractPostLinks()">ดึงลิงก์โพสต์</button>
+        <div id="output2"></div>
+    </section>
+
+    <!-- ฟีเจอร์ 3 (ใหม่) -->
+    <section>
+        <h2>ฟีเจอร์ 3: ดึงข้อความจากลิงก์ข่าว</h2>
+        <input id="urlInput3" type="text" size="80" placeholder="ใส่ลิงก์ข่าวที่ต้องการสครับ" />
+        <button onclick="extractFullText()">ดึงข้อความ</button>
+        <div id="output3"></div>
     </section>
 
     <script>
-      async function extractAttribLinks() {
-        const url = document.getElementById('urlInput1').value;
-        const output = document.getElementById('output1');
-        output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
+        // ฟีเจอร์ 1
+        async function extractAttribLinks() {
+            const url = document.getElementById('urlInput1').value;
+            const output = document.getElementById('output1');
+            const content = document.getElementById('content');
+            output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
+            content.innerHTML = '<p>⏳ กำลังดึงข้อมูล Content...</p>';
 
-        try {
-          const response = await fetch('/extract?url=' + encodeURIComponent(url));
-          if (!response.ok) throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล');
+            try {
+                const response = await fetch('/extract?url=' + encodeURIComponent(url));
+                if (!response.ok) throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล');
 
-          const data = await response.json();
+                const data = await response.json();
 
-          if (data.links.length === 0) {
-            output.innerHTML = '<p>❌ ไม่พบลิงก์ที่มี attributionsrc ที่เป็น l.php</p>';
-          } else {
-            let html = "<p>✅ พบลิงก์ที่มี attributionsrc และเป็นลิงก์ l.php (ไม่ซ้ำ):</p>";
-            data.links.forEach((link, index) => {
-              const safeId = 'link_' + index;
-              html += `
+                if (data.links.length === 0) {
+                    output.innerHTML = '<p>❌ ไม่พบลิงก์ที่มี attributionsrc ที่เป็น l.php</p>';
+                    content.innerHTML = '<p>❌ ไม่พบลิงก์ที่มี attributionsrc ที่เป็น l.php</p>';
+                } else {
+                    let html = "<p>✅ พบลิงก์ที่มี attributionsrc และเป็นลิงก์ l.php (ไม่ซ้ำ):</p>";
+                    data.links.forEach((link, index) => {
+                        const safeId = 'link_' + index;
+                        html += `
                 <div>
                   <input type="text" id="${safeId}" class="link-box" value="${link.href}" readonly />
                   <button class="copy-btn" onclick="copyToClipboard('${safeId}')">📋 คัดลอก</button>
                 </div>
               `;
-            });
-            output.innerHTML = html;
-          }
-        } catch (err) {
-          output.innerHTML = '<p>❌ ' + err.message + '</p>';
+                    });
+                    output.innerHTML = html;
+
+                    // Content
+                    let html_content = "<p>✅ พบลิงก์ที่มี Content :</p>";
+                    data.links.forEach((link, index) => {
+                        const safeContent = "content_" + index;
+                        html_content += `
+                <div>
+                  <input type="text" id="${safeContent}" class="link-box" value="${link.href}" readonly />
+                  <button class="copy-btn" onclick="copyToClipboard('${safeContent}')">📋 คัดลอก</button>
+                </div>
+              `;
+                    });
+                    content.innerHTML = html_content;
+                }
+            } catch (err) {
+                output.innerHTML = '<p>❌ ' + err.message + '</p>';
+            }
         }
-      }
 
-      async function extractPostLinks() {
-        const url = document.getElementById('urlInput2').value;
-        const output = document.getElementById('output2');
-        output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
+        // ฟีเจอร์ 2
+        async function extractPostLinks() {
+            const url = document.getElementById('urlInput2').value;
+            const output = document.getElementById('output2');
+            output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
 
-        try {
-          const response = await fetch('/extract-post-links?url=' + encodeURIComponent(url));
-          if (!response.ok) throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล');
+            try {
+                const response = await fetch('/extract-post-links?url=' + encodeURIComponent(url));
+                if (!response.ok) throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล');
 
-          const data = await response.json();
+                const data = await response.json();
 
-          if (data.links.length === 0) {
-            output.innerHTML = '<p>❌ ไม่พบลิงก์ในโพสต์</p>';
-          } else {
-            let html = "<p>✅ พบลิงก์ในโพสต์ (ไม่ซ้ำ และไม่ใช่ hashtag):</p>";
-            data.links.forEach((link, index) => {
-              const safeId = 'postlink_' + index;
-              html += `
+                if (data.links.length === 0) {
+                    output.innerHTML = '<p>❌ ไม่พบลิงก์ในโพสต์</p>';
+                } else {
+                    let html = "<p>✅ พบลิงก์ในโพสต์ (ไม่ซ้ำ และไม่ใช่ hashtag):</p>";
+                    data.links.forEach((link, index) => {
+                        const safeId = 'postlink_' + index;
+                        html += `
                 <div>
                   <input type="text" id="${safeId}" class="link-box" value="${link.href}" readonly />
                   <button class="copy-btn" onclick="copyToClipboard('${safeId}')">📋 คัดลอก</button>
                 </div>
               `;
-            });
-            output.innerHTML = html;
-          }
-        } catch (err) {
-          output.innerHTML = '<p>❌ ' + err.message + '</p>';
+                    });
+                    output.innerHTML = html;
+                }
+            } catch (err) {
+                output.innerHTML = '<p>❌ ' + err.message + '</p>';
+            }
         }
-      }
 
-      function copyToClipboard(id) {
-        const input = document.getElementById(id);
-        input.select();
-        input.setSelectionRange(0, 99999);
-        document.execCommand('copy');
-        alert('✅ คัดลอกแล้ว: ' + input.value);
-      }
+        // ฟีเจอร์ 3 (ใหม่)
+        async function extractFullText() {
+            const url = document.getElementById('urlInput3').value.trim();
+            const output = document.getElementById('output3');
+            if (!url) {
+                output.innerHTML = '<p>❌ กรุณาใส่ URL ก่อน</p>';
+                return;
+            }
+
+            output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
+
+            try {
+                const response = await fetch('/extract-full?url=' + encodeURIComponent(url));
+                if (!response.ok) throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล');
+
+                const data = await response.json();
+
+                if (!data.results || data.results.length === 0) {
+                    output.innerHTML = '<p>❌ ไม่พบข้อความในหน้าเว็บนี้</p>';
+                    return;
+                }
+
+                // สร้าง HTML แสดงข้อความแต่ละบรรทัด
+                let html = '<h3>✅ ผลลัพธ์ที่ดึงได้:</h3><ul>';
+                data.results.forEach(text => {
+                    html += `<li>${text}</li>`;
+                });
+                html += '</ul>';
+
+                output.innerHTML = html;
+            } catch (err) {
+                output.innerHTML = `<p>❌ ${err.message}</p>`;
+            }
+        }
+
+        // ฟังก์ชันคัดลอก
+        function copyToClipboard(id) {
+            const input = document.getElementById(id);
+            input.select();
+            input.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            alert('✅ คัดลอกแล้ว: ' + input.value);
+        }
     </script>
-  </body>
+</body>
+
 </html>
