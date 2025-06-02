@@ -7,7 +7,6 @@ const PORT = 5000;
 
 app.use(express.static('public'));
 
-// Replace res.send(...) with this
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -83,7 +82,7 @@ app.get('/extract-post-links', async (req, res) => {
           try {
             const urlObj = new URL(href);
             if (urlObj.hostname === 'www.facebook.com' && urlObj.pathname.startsWith('/hashtag/')) {
-              continue; // ข้ามลิงก์ hashtag
+              continue; 
             }
 
             const baseHref = href.split('?')[0];
