@@ -43,7 +43,6 @@
         <input id="urlInput1" type="text" size="80" value="" />
         <button onclick="extractAttribLinks()">ดึงลิงก์ attributionsrc</button>
         <div id="output1"></div>
-        <div id="content"></div>
     </section>
 
     <!-- ฟีเจอร์ 2 -->
@@ -70,7 +69,6 @@
             const output = document.getElementById('output1');
             const content = document.getElementById('content');
             output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
-            content.innerHTML = '<p>⏳ กำลังดึงข้อมูล Content...</p>';
 
             try {
                 const response = await fetch('/extract?url=' + encodeURIComponent(url));
@@ -80,7 +78,6 @@
 
                 if (data.links.length === 0) {
                     output.innerHTML = '<p>❌ ไม่พบลิงก์ที่มี attributionsrc ที่เป็น l.php</p>';
-                    content.innerHTML = '<p>❌ ไม่พบลิงก์ที่มี attributionsrc ที่เป็น l.php</p>';
                 } else {
                     let html = "<p>✅ พบลิงก์ที่มี attributionsrc และเป็นลิงก์ l.php (ไม่ซ้ำ):</p>";
                     data.links.forEach((link, index) => {
@@ -95,17 +92,6 @@
                     output.innerHTML = html;
 
                     // Content
-                    let html_content = "<p>✅ พบลิงก์ที่มี Content :</p>";
-                    data.links.forEach((link, index) => {
-                        const safeContent = "content_" + index;
-                        html_content += `
-                <div>
-                  <input type="text" id="${safeContent}" class="link-box" value="${link.href}" readonly />
-                  <button class="copy-btn" onclick="copyToClipboard('${safeContent}')">📋 คัดลอก</button>
-                </div>
-              `;
-                    });
-                    content.innerHTML = html_content;
                 }
             } catch (err) {
                 output.innerHTML = '<p>❌ ' + err.message + '</p>';
