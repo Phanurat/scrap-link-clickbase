@@ -31,6 +31,10 @@
             border: 1px solid #ddd;
             overflow-x: auto;
         }
+
+        textarea {
+            resize: none;
+        }
     </style>
 </head>
 
@@ -79,10 +83,15 @@
                 if (data.links.length === 0) {
                     output.innerHTML = '<p>❌ ไม่พบลิงก์ที่มี attributionsrc ที่เป็น l.php</p>';
                 } else {
+                    const content = data.content;
                     let html = "<p>✅ พบลิงก์ที่มี attributionsrc และเป็นลิงก์ l.php (ไม่ซ้ำ):</p>";
                     data.links.forEach((link, index) => {
                         const safeId = 'link_' + index;
+                        const safeContent = content;
                         html += `
+                <div>
+                    <input type="text" id="${safeContent}" class="link-box" value="${content}" readonly />
+                </div>
                 <div>
                   <input type="text" id="${safeId}" class="link-box" value="${link.href}" readonly />
                   <button class="copy-btn" onclick="copyToClipboard('${safeId}')">📋 คัดลอก</button>
@@ -105,24 +114,33 @@
             output.innerHTML = '<p>⏳ กำลังดึงข้อมูล...</p>';
 
             try {
-                const response = await fetch('/extract-post-links?url=' + encodeURIComponent(url));
+                const response = await fetch('/extract?url=' + encodeURIComponent(url));
                 if (!response.ok) throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล');
 
                 const data = await response.json();
+                const content = data.content || '';
+                const links = (data.links || []).map(link => link.href);
 
-                if (data.links.length === 0) {
+                if (links.length === 0) {
                     output.innerHTML = '<p>❌ ไม่พบลิงก์ในโพสต์</p>';
                 } else {
-                    let html = "<p>✅ พบลิงก์ในโพสต์ (ไม่ซ้ำ และไม่ใช่ hashtag):</p>";
-                    data.links.forEach((link, index) => {
+                    let html = `
+                <p>📄 <strong>เนื้อหาโพสต์:</strong></p>
+                <div class="post-content" style="white-space: pre-line; border: 1px solid #ccc; padding: 12px; border-radius: 6px; background: #f9f9f9; margin-bottom: 16px;">${content}</div>
+                <p>🔗 <strong>ลิงก์ที่พบทั้งหมด (${links.length}):</strong></p>
+            `;
+
+                    links.forEach((href, index) => {
                         const safeId = 'postlink_' + index;
                         html += `
-                <div>
-                  <input type="text" id="${safeId}" class="link-box" value="${link.href}" readonly />
-                  <button class="copy-btn" onclick="copyToClipboard('${safeId}')">📋 คัดลอก</button>
-                </div>
-              `;
+                    <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: flex-start;">
+                        <label style="min-width: 24px;">${index + 1}.</label>
+                        <textarea id="${safeId}" class="link-box" rows="2" style="width: 100%; resize: none;" readonly>${href}</textarea>
+                        <button class="copy-btn" onclick="copyToClipboard('${safeId}')">📋 คัดลอก</button>
+                    </div>
+                `;
                     });
+
                     output.innerHTML = html;
                 }
             } catch (err) {

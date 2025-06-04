@@ -65,7 +65,6 @@ app.get('/extract-post-links', async (req, res) => {
       await page.waitForSelector('div[dir="auto"]', { timeout: 5000 });
     } catch { }
 
-    const content = await page.$eval('div[data-ad-preview="message"]', el => el.innerText);
     const links = await page.evaluate(() => {
       const allPosts = Array.from(document.querySelectorAll('div[dir="auto"]'));
       const results = [];
@@ -97,7 +96,7 @@ app.get('/extract-post-links', async (req, res) => {
 
     await browser.close();
 
-    res.json({ content, links });
+    res.json({ links });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
